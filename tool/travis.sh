@@ -2,6 +2,8 @@
 
 # Fast fail the script on failures.
 set -e
+# Normalize Branch variable
+export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
 
 # Use the version of Dart SDK from the Flutter repository instead of whatever
 # version is in the PATH.
@@ -81,4 +83,16 @@ if [ "$TRAVIS_EVENT_TYPE" = "push" ] && [ "$TRAVIS_BRANCH" = "master" ]; then
   echo "Deploying to Firebase."
   npm install --global firebase-tools@3.0.0
   firebase -P sweltering-fire-2088 --token "$FIREBASE_TOKEN" deploy
+fi
+
+if [ "$BRANCH" != "master" ]; then
+    echo "deploying to test environment"
+    cd tool/
+    ../../flutter/bin/cache/dart-sdk/bin/pub get
+    export PROJECT_NAME=`../../flutter/bin/cache/dart-sdk/bin/dart prdeployer.dart $BRANCH 2>&1`
+    cd ../
+    echo "Deploying to $PROJECT_NAME"
+    npm install --global firebase-tools@3.0.0
+    echo "firebase -P "$PROJECT_NAME" --token "$FIREBASE_TOKEN" deploy"
+    firebase -P "$PROJECT_NAME" --token "$FIREBASE_TOKEN" deploy
 fi
